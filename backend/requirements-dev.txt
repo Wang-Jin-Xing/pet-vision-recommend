@@ -1,0 +1,4 @@
+# 测试与本地开发额外依赖（CI 中随 requirements.txt 一并安装）
+# FastAPI TestClient 基于 httpx，必须显式声明
+pytest==8.3.4
+httpx==0.28.1

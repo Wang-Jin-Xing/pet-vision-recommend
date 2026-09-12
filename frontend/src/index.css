@@ -1,0 +1,288 @@
+@import "tailwindcss";
+
+/* ============ PetPals 粉色宠物风主题（深色背景） ============ */
+:root {
+  --pp-bg: #1a1625;
+  --pp-primary: #f472b6;
+}
+
+body {
+  background-color: var(--pp-bg);
+  color: #f5f3ff;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+}
+
+/* 深色滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(244, 114, 182, 0.25);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(244, 114, 182, 0.45);
+}
+
+/* ============ AI 回答的 Markdown 排版（聊天页灰气泡内，粉色强调） ============ */
+.md-body {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.md-body > :first-child {
+  margin-top: 0;
+}
+
+.md-body > :last-child {
+  margin-bottom: 0;
+}
+
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4 {
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0.8em 0 0.4em;
+  line-height: 1.4;
+}
+
+.md-body h3 {
+  font-size: 0.95rem;
+}
+
+.md-body p {
+  margin: 0.5em 0;
+}
+
+.md-body ul,
+.md-body ol {
+  margin: 0.5em 0;
+  padding-left: 1.4em;
+}
+
+.md-body ul {
+  list-style: disc;
+}
+
+.md-body ol {
+  list-style: decimal;
+}
+
+.md-body li {
+  margin: 0.25em 0;
+}
+
+.md-body li::marker {
+  color: #ec4899;
+}
+
+.md-body strong {
+  font-weight: 700;
+  color: #be185d;
+}
+
+.md-body a {
+  color: #db2777;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* 行内代码 */
+.md-body code {
+  background: #fce7f3;
+  color: #be185d;
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+  font-size: 0.82em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 代码块 */
+.md-body pre {
+  background: #1f2937;
+  color: #f3f4f6;
+  border-radius: 10px;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  margin: 0.6em 0;
+  font-size: 0.82em;
+  line-height: 1.5;
+}
+
+.md-body pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* 表格 */
+.md-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.7em 0;
+  font-size: 0.82rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.md-body th,
+.md-body td {
+  border: 1px solid #fbcfe8;
+  padding: 0.45em 0.7em;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.md-body th {
+  background: #fdf2f8;
+  color: #9d174d;
+  font-weight: 600;
+}
+
+.md-body tr:nth-child(even) td {
+  background: #fffafc;
+}
+
+/* 引用块 */
+.md-body blockquote {
+  border-left: 3px solid #f9a8d4;
+  background: rgba(252, 231, 243, 0.5);
+  color: #831843;
+  padding: 0.4em 0.9em;
+  margin: 0.6em 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.md-body blockquote p {
+  margin: 0.25em 0;
+}
+
+.md-body hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 0.8em 0;
+}
+
+/* ============ 动画：打字点 / 加载圈 / 弹窗弹出 / 骨架屏 ============ */
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 1em;
+}
+
+.typing-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f472b6;
+  display: inline-block;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.typing-dots-sm i {
+  width: 4px;
+  height: 4px;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.agent-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fbcfe8;
+  border-top-color: #ec4899;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-pop {
+  animation: modal-pop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(244, 114, 182, 0.12),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes card-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}

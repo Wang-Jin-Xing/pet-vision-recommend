@@ -1,0 +1,22 @@
+# ===== Web 框架 =====
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# ===== 数据库 / 数据校验 =====
+sqlalchemy==2.0.36
+pydantic==2.10.4
+pydantic-settings==2.7.1
+
+# ===== JWT 鉴权与密码加密 =====
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+# passlib 1.7.4 与 bcrypt>=4.1 不兼容（读取 __about__ 版本报错），固定 4.0.x
+bcrypt==4.0.1
+
+# ===== AI：LangChain + LangGraph + ChromaDB =====
+langchain==0.3.14
+langgraph==0.2.60
+langchain-community==0.3.14
+langchain-openai==0.2.13
+chromadb==0.5.23

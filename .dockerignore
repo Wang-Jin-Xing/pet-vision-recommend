@@ -1,0 +1,37 @@
+# ===== 仓库根目录排除项（以根目录为构建上下文时生效）=====
+# Node
+**/node_modules/
+**/dist/
+**/.vite/
+npm-debug.log*
+
+# Python
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/*.egg-info/
+
+# 运行时数据 / 数据库
+**/petpals.db
+**/*.db
+**/uploads/
+**/data/chroma/
+
+# 环境变量与密钥
+**/.env
+**/.env.*
+
+# 版本控制 / IDE / 系统文件
+.git/
+**/.gitignore
+**/.vscode/
+**/.idea/
+**/.DS_Store
+**/Thumbs.db
+
+# 容器文件自身
+**/Dockerfile
+**/.dockerignore
+docker-compose.yml

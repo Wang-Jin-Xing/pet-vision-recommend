@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# 运行时数据（SQLite 数据库 + Chroma 向量库，任何层级都忽略）
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# 上传目录：默认忽略全部运行时文件，但保留随仓库分发的 RAG 种子文档（txt/md）
+backend/uploads/*
+!backend/uploads/*.txt
+!backend/uploads/*.md
+
+# Node
+node_modules/
+dist/
+
+# 环境变量与密钥
+.env
+.env.*
+
+# 系统 / IDE
+.DS_Store
+Thumbs.db

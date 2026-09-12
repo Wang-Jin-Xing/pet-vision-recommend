@@ -1,0 +1,32 @@
+# ===== Python 后端构建上下文排除项 =====
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# 本地数据库 / 运行时数据（容器内由命名卷持久化，不进镜像）
+petpals.db
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# 环境变量与密钥
+.env
+.env.*
+
+# 版本控制 / IDE / 系统文件
+.git/
+.gitignore
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 容器文件自身
+Dockerfile
+.dockerignore
