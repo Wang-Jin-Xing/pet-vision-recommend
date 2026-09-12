@@ -4,8 +4,7 @@
 > 前后端分离、Docker 一键部署、GitHub Actions CI，覆盖从产品到工程化的完整链路。
 
 **作者**：Wang Jin Xing  
-**仓库**：https://github.com/Wang-Jin-Xing/petpals-fullstack  
-**AI 部分面试详解**：[AI助手面试详解.md](AI助手面试详解.md)
+**仓库**：https://github.com/Wang-Jin-Xing/petpals-fullstack
 
 ---
 
@@ -129,8 +128,6 @@ supervisor（LLM 意图分类：knowledge / shopping / order）
 - **RAG 知识库**：`backend/uploads/` 里预置了 7 篇养宠文档，启动时自动索引进 ChromaDB；上传 `.txt/.md` 文档会自动切块向量化入库
 - **优雅降级**：未配置 `LLM_API_KEY` 时自动回退到本地关键词路由 + 模板回答，应用仍可完整运行
 
-> 📖 **AI 部分设计详解**：节点职责、RAG 链路、并发处理、面试 Q&A 见 [AI助手面试详解.md](AI助手面试详解.md)
-
 ### 安全加固
 
 - 全部 SQL 经 ORM/参数化，无注入风险
@@ -148,7 +145,6 @@ petpals-fullstack/
 ├── .env                           # 本机国内镜像加速配置（不要提交到 git）
 ├── .github/workflows/deploy.yml  # CI：推送到 main 自动跑测试→构建前端→构建镜像
 ├── README.md                      # 项目说明（本文件）
-├── AI助手面试详解.md              # AI 部分设计详解 + 面试 Q&A
 │
 ├── backend/                       # 后端（Python 3.11 + FastAPI）
 │   ├── main.py                    # 程序入口：启动后端（建表+种子商品+知识库索引）
