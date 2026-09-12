@@ -1,10 +1,25 @@
-# PetPals 宠物生活服务平台 · 使用指南
+# PetPals 宠物生活服务平台
 
-一个**全栈练手项目**：宠物用品商城 + AI 养宠助手。前端是网页商店，后端提供 API，AI 助手基于多 Agent 工作流（LangGraph）+ 知识库检索（ChromaDB 向量库）。**所有 AI 能力都是本地确定性实现，不需要任何大模型 API Key、不花一分钱**。
+> 一个面向面试的全栈实战项目：宠物用品商城 + AI 养宠助手（多 Agent + RAG + Human-in-the-loop）。
+> 前后端分离、Docker 一键部署、GitHub Actions CI，覆盖从产品到工程化的完整链路。
+
+**作者**：Wang Jin Xing  
+**仓库**：https://github.com/Wang-Jin-Xing/petpals-fullstack  
+**AI 部分面试详解**：[AI助手面试详解.md](AI助手面试详解.md)
 
 ---
 
-## 一、最快上手：Docker 一键启动（推荐，不用懂代码）
+## 技术亮点
+
+- **AI 多 Agent 工作流**：基于 LangGraph 编排 7 个节点（Supervisor 意图分类 → 专职 Agent → 安全分析 → 人工审核 → Writer），支持 Human-in-the-loop
+- **RAG 知识检索**：ChromaDB 向量库 + 混合检索（词法 0.75 + 向量 0.25），避免 LLM 编造
+- **流式输出**：SSE 打字机效果（event: progress / delta / done），类 ChatGPT 体验
+- **LLM 集成 + 优雅降级**：接入智谱 GLM-4-Flash，未配置 Key 时自动回退本地确定性逻辑，应用仍可完整运行
+- **工程化**：Docker Compose 一键部署、GitHub Actions 自动化测试与镜像构建、42 个 pytest 用例
+
+---
+
+## 一、最快上手：Docker 一键启动（推荐）
 
 ### 前置条件（只需要装一次）
 
@@ -12,9 +27,9 @@
 2. 安装后**重启电脑**，打开 Docker Desktop，等右下角鲸鱼图标不再转圈
 3. 确认 Docker 正常：终端里执行 `docker --version` 能看到版本号
 
-### 启动（每次想用的时候）
+### 启动
 
-在**项目根目录**（有 `docker-compose.yml` 的那个文件夹）打开终端，执行：
+在**项目根目录**（有 `docker-compose.yml` 的那个文件夹）打开终端：
 
 ```bash
 docker compose up -d --build
@@ -33,23 +48,36 @@ docker compose ps
 - 第一次使用先点右上角「注册」，自己填邮箱/用户名/密码（邮箱格式正确即可，不会真的发邮件）
 - 注册后登录就能用全部功能
 
+### 配置 AI 大模型（可选）
+
+项目默认已接入智谱 GLM-4-Flash（免费）。在项目根目录创建 `.env` 文件并填入：
+
+```env
+LLM_API_KEY=你的智谱 API Key
+LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4/
+LLM_MODEL=glm-4-flash
+```
+
+> 不配置也能跑：AI 工作流会自动降级为本地关键词路由 + 模板回答，所有功能仍可用。
+
 ### 停止 / 重启 / 看日志
 
 ```bash
-docker compose down          # 停止（数据不会丢）
-docker compose up -d         # 再次启动（不用 --build）
+docker compose down              # 停止（数据不会丢）
+docker compose up -d             # 再次启动（不用 --build）
 docker compose logs -f backend   # 看后端日志（Ctrl+C 退出查看，不会停服务）
 docker compose restart backend   # 只重启后端
 ```
 
 ### 数据存在哪？
 
-数据在两个 Docker「数据卷」里，**容器删除重建数据也在**：
+数据在 Docker「数据卷」里，**容器删除重建数据也在**：
 
 | 卷名 | 存的内容 |
 |------|----------|
 | `petpals-data` | SQLite 数据库（用户/商品/订单/对话）+ Chroma 向量知识库 |
 | `petpals-uploads` | 上传的知识文档原文 |
+| `petpals-cache` | ChromaDB 嵌入模型缓存（首次下载后重建容器不丢失） |
 
 > ⚠️ 只有执行 `docker compose down -v`（多了 `-v`）才会删除数据卷，平时不要加。
 
@@ -57,7 +85,7 @@ docker compose restart backend   # 只重启后端
 
 ## 二、这个项目实现了什么功能？
 
-### 🛒 商城部分
+### 商城部分
 
 | 功能 | 说明 |
 |------|------|
@@ -67,9 +95,9 @@ docker compose restart backend   # 只重启后端
 | 订单 | 下单自动**扣库存、算总价、记录下单时单价**；订单列表、状态流转（待付款→已付款→已发货→已签收）；**只能看自己的订单**，越权访问返回 403 |
 | 商品搜索 | 首页可按关键词、分类筛选 |
 
-### 🤖 AI 养宠助手（核心亮点，已接入大模型）
+### AI 养宠助手（核心亮点）
 
-入口：登录后点导航栏「AI 助手」（`/chat`）。用自然语言和它对话，它是一个**多 Agent 工作流**，由大模型（智谱 GLM-4-Flash，免费）驱动意图识别与回答生成：
+入口：登录后点导航栏「AI 助手」（`/chat`）。用自然语言和它对话，它是一个**多 Agent 工作流**，由大模型（智谱 GLM-4-Flash）驱动意图识别与回答生成：
 
 ```
 你的问题
@@ -92,7 +120,7 @@ supervisor（LLM 意图分类：knowledge / shopping / order）
                  生成最终回答（Markdown 渲染，支持流式 SSE 打字机效果）
 ```
 
-特点：
+**特点**：
 
 - **真实 LLM + RAG**：知识问答由大模型基于检索到的文档合成回答，底部附带来源引用（不是关键词匹配）
 - **意图分类由 LLM 完成**：比硬编码关键词更准确，能理解自然语言
@@ -101,9 +129,9 @@ supervisor（LLM 意图分类：knowledge / shopping / order）
 - **RAG 知识库**：`backend/uploads/` 里预置了 7 篇养宠文档，启动时自动索引进 ChromaDB；上传 `.txt/.md` 文档会自动切块向量化入库
 - **优雅降级**：未配置 `LLM_API_KEY` 时自动回退到本地关键词路由 + 模板回答，应用仍可完整运行
 
-> 模型配置见下方「配置项」中的 `LLM_*`。使用其他兼容 OpenAI 协议的模型（DeepSeek/通义/豆包）只需改 `LLM_BASE_URL` 和 `LLM_MODEL`。
+> 📖 **AI 部分设计详解**：节点职责、RAG 链路、并发处理、面试 Q&A 见 [AI助手面试详解.md](AI助手面试详解.md)
 
-### 🔒 已做的安全加固
+### 安全加固
 
 - 全部 SQL 经 ORM/参数化，无注入风险
 - JWT 鉴权覆盖所有需登录接口，资源归属校验
@@ -112,55 +140,57 @@ supervisor（LLM 意图分类：knowledge / shopping / order）
 
 ---
 
-## 三、目录结构（东西都在哪？）
+## 三、目录结构
 
 ```
 petpals-fullstack/
-├── docker-compose.yml        # Docker 一键编排（前后端 + 数据卷）
-├── .env                      # 本机国内镜像加速配置（不要提交到 git）
+├── docker-compose.yml            # Docker 一键编排（前后端 + 数据卷）
+├── .env                           # 本机国内镜像加速配置（不要提交到 git）
 ├── .github/workflows/deploy.yml  # CI：推送到 main 自动跑测试→构建前端→构建镜像
+├── README.md                      # 项目说明（本文件）
+├── AI助手面试详解.md              # AI 部分设计详解 + 面试 Q&A
 │
-├── backend/                  # 后端（Python 3.11 + FastAPI）
-│   ├── main.py               # 程序入口：启动它就等于开后端（建表+种子商品）
-│   ├── config.py             # 所有配置项（环境变量）
-│   ├── database.py           # 数据库连接
-│   ├── models.py             # 数据表定义（用户/商品/订单/对话/文档）
-│   ├── schemas.py            # 接口入参校验规则
-│   ├── auth.py               # 密码哈希、JWT 签发解析、登录依赖
-│   ├── routers/              # 接口（每个文件一组 API）
-│   │   ├── auth.py           #   注册 / 登录 / 当前用户
-│   │   ├── products.py       #   商品列表/搜索/管理
-│   │   ├── orders.py         #   下单 / 订单 / 状态
-│   │   ├── chat.py           #   AI 对话（普通 + SSE 流式 + 人工审核恢复）
-│   │   ├── history.py        #   历史会话
-│   │   └── upload.py         #   知识文档上传
-│   ├── agents/               # AI 多 Agent 工作流
-│   │   ├── graph.py          #   LangGraph 图的组装
-│   │   ├── nodes.py          #   各 Agent 节点逻辑
-│   │   ├── tools.py          #   Agent 可调用的工具（查商品/检索知识库/算价等）
-│   │   ├── review.py         #   人工审核相关
-│   │   └── state.py          #   工作流状态结构
-│   ├── uploads/              # 预置的 7 篇知识库文档（也可在网页上传）
-│   ├── data/chroma/          # Chroma 向量库文件（运行后生成）
-│   ├── petpals.db            # SQLite 数据库文件（本地开发模式生成）
-│   ├── tests/                # 42 个自动化测试
-│   ├── requirements.txt      # 后端依赖
+├── backend/                       # 后端（Python 3.11 + FastAPI）
+│   ├── main.py                    # 程序入口：启动后端（建表+种子商品+知识库索引）
+│   ├── config.py                  # 所有配置项（环境变量）
+│   ├── database.py                # 数据库连接
+│   ├── models.py                  # 数据表定义（用户/商品/订单/对话/文档）
+│   ├── schemas.py                 # 接口入参校验规则
+│   ├── auth.py                    # 密码哈希、JWT 签发解析、登录依赖
+│   ├── routers/                   # 接口（每个文件一组 API）
+│   │   ├── auth.py                #   注册 / 登录 / 当前用户
+│   │   ├── products.py            #   商品列表/搜索/管理
+│   │   ├── orders.py              #   下单 / 订单 / 状态
+│   │   ├── chat.py                #   AI 对话（普通 + SSE 流式 + 人工审核恢复）
+│   │   ├── history.py             #   历史会话
+│   │   └── upload.py              #   知识文档上传
+│   ├── agents/                    # AI 多 Agent 工作流
+│   │   ├── graph.py               #   LangGraph 图的组装
+│   │   ├── nodes.py               #   各 Agent 节点逻辑
+│   │   ├── tools.py               #   Agent 可调用的工具（查商品/检索知识库/算价等）
+│   │   ├── review.py              #   人工审核桥接（review_store）
+│   │   ├── llm.py                 #   LLM 封装（意图分类 + RAG 回答生成）
+│   │   └── state.py               #   工作流状态结构
+│   ├── uploads/                   # 预置的 7 篇知识库文档（也可在网页上传）
+│   ├── data/chroma/               # Chroma 向量库文件（运行后生成）
+│   ├── tests/                     # 42 个自动化测试
+│   ├── requirements.txt           # 后端依赖
 │   └── Dockerfile
 │
-└── frontend/                 # 前端（React 19 + Vite + TailwindCSS）
+└── frontend/                      # 前端（React 19 + Vite + TailwindCSS）
     ├── src/
-    │   ├── pages/            # Home 首页 / Login / Register / Cart 购物车
-    │   │                     # Orders 订单 / Chat AI 助手
-    │   ├── components/       # Navbar 导航栏 / ProductCard 商品卡等
-    │   ├── context/          # 购物车全局状态
-    │   └── api/client.js     # 统一请求封装（自动带 JWT，401 自动跳登录）
-    ├── nginx.conf            # 部署时 Nginx 配置：/api 转发后端，支持 SSE
-    └── Dockerfile            # 多阶段：node 编译 → nginx 托管
+    │   ├── pages/                 # Home 首页 / Login / Register / Cart 购物车
+    │   │                          # Orders 订单 / Chat AI 助手
+    │   ├── components/            # Navbar 导航栏 / ProductCard 商品卡等
+    │   ├── context/               # 购物车全局状态
+    │   └── api/client.js          # 统一请求封装（自动带 JWT，401 自动跳登录）
+    ├── nginx.conf                 # 部署时 Nginx 配置：/api 转发后端，支持 SSE
+    └── Dockerfile                 # 多阶段：node 编译 → nginx 托管
 ```
 
 ---
 
-## 四、开发者模式：不用 Docker，本地分别启动
+## 四、开发者模式：本地分别启动
 
 适合要改代码的人。需要本机装 **Python 3.11** 和 **Node.js 20**。
 
@@ -191,14 +221,7 @@ npm run dev
 ```powershell
 cd backend
 pip install -r requirements-dev.txt   # pytest + httpx
-pytest -q                             # 42 个用例，约 8 秒
-```
-
-### 打包前端（验证能否编译上线）
-
-```powershell
-cd frontend
-npm run build       # 产物在 frontend/dist/
+pytest -q                             # 42 个用例
 ```
 
 ---
@@ -218,13 +241,16 @@ npm run build       # 产物在 frontend/dist/
 | `LLM_API_KEY` | 空 | 大模型 API Key（兼容 OpenAI 协议，如智谱 GLM）；空则降级为本地确定性逻辑 |
 | `LLM_BASE_URL` | 智谱 GLM 网关 | OpenAI 兼容网关地址 |
 | `LLM_MODEL` | `glm-4-flash` | 模型名称 |
+| `LLM_TEMPERATURE` | `0.3` | 采样温度，偏低减少随机性 |
 | `KNOWLEDGE_SEED_DIR` | 空 | 启动时自动索引到 ChromaDB 的种子文档目录（Docker 中为 `/app/seed_docs`） |
 
 Docker 构建加速配置在**项目根目录的 `.env`**（1ms.run 基础镜像 / 华为云 pip / npmmirror / 清华 apt）。在国外网络或 CI 环境删掉该文件即自动回退官方源，无需改 Dockerfile。
 
+> 切换其他兼容 OpenAI 协议的模型（DeepSeek/通义/豆包）只需改 `LLM_BASE_URL` 和 `LLM_MODEL` 两个环境变量。
+
 ---
 
-## 六、CI 持续集成（已配好，推代码就自动跑）
+## 六、CI 持续集成
 
 文件：[.github/workflows/deploy.yml](.github/workflows/deploy.yml)。代码 **push 到 GitHub 的 main 分支**后自动执行：
 
@@ -251,10 +277,7 @@ A：`docker compose down -v`（⚠️ 删除全部用户/订单/知识库），�
 A：Windows 需要启用「适用于 Linux 的 Windows 子系统」和「虚拟机平台」两项功能并重启；Docker Desktop 设置里确认用 WSL2 后端。
 
 **Q：AI 回答要收费吗？**
-A：不收费。没有接入任何外部大模型，全部逻辑在本地运行。
-
-**Q：如何接入真正的大模型？**
-A：把 `backend/agents/nodes.py` 里的关键词解析/模板生成替换为 LLM 调用（`bind_tools`）即可，状态结构和图拓扑不用动，代码里已留注释说明。
+A：项目默认接入智谱 GLM-4-Flash（有免费额度）。未配置 `LLM_API_KEY` 时自动降级为本地确定性逻辑，完全免费且功能完整。
 
 **Q：怎么往知识库加内容？**
 A：登录后在 AI 助手相关页面上传 `.txt`/`.md`（≤2MB），或直接把文件放进 `backend/uploads/` 对应数据卷目录，文档会切块向量化。
@@ -268,7 +291,7 @@ A：登录后在 AI 助手相关页面上传 `.txt`/`.md`（≤2MB），或直�
 | 前端 | React 19、Vite 6、TailwindCSS 4、React Router 7、Axios、react-markdown |
 | 后端 | Python 3.11、FastAPI、Uvicorn、SQLAlchemy 2.0、Pydantic v2 |
 | 数据库 | SQLite（单文件，零运维） |
-| AI | LangGraph（多 Agent + interrupt 人工审核）、LangChain、ChromaDB 0.5（本地向量库） |
+| AI | LangGraph（多 Agent + interrupt 人工审核）、LangChain、ChromaDB 0.5（本地向量库）、智谱 GLM-4-Flash |
 | 鉴权 | python-jose（JWT）、passlib + bcrypt |
 | 部署 | Docker、Docker Compose、Nginx |
 | 质量 | pytest（42 用例）、GitHub Actions CI |
