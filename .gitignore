@@ -24,6 +24,9 @@ dist/
 .env
 .env.*
 
-# 系统 / IDE
+# 系统 / IDE（编辑器与 AI 编程工具的本地产物，不进仓库）
 .DS_Store
 Thumbs.db
+.trae/
+.idea/
+.vscode/
