@@ -9,6 +9,54 @@
 
 ---
 
+## 快速开始（三行命令）
+
+```bash
+git clone https://github.com/Wang-Jin-Xing/pet-vision-recommend.git && cd pet-vision-recommend
+docker compose up -d --build        # 首次 5~15 分钟（下载镜像与依赖），之后几秒
+docker compose ps                   # 两个容器都 Up 即成功 → 浏览器打开 http://localhost:8080
+```
+
+> 需要真实大模型能力时，在**项目根目录**建一个 `.env` 填智谱 API Key（内容见下方「一、最快上手」）。
+> 不配也能跑：工作流自动降级为本地关键词路由 + 模板回答，所有功能仍可用。
+
+## 系统架构
+
+```mermaid
+flowchart TD
+  U(["用户提问 / 上传照片"]) --> R{"本次带图片？"}
+  R -- "带图" --> V["vision_agent（GLM-4V）<br/>识别 + 三层鲁棒 JSON 解析"]
+  R -- "不带图" --> SUP["supervisor<br/>意图分类"]
+  V --> SUP
+  SUP -- "knowledge" --> K["knowledge_agent<br/>ChromaDB 词法 + 向量混合检索"]
+  SUP -- "shopping" --> S["shopping_agent<br/>按档案筛选商品"]
+  SUP -- "order" --> O["order_agent<br/>订单与配送核算"]
+  K --> A["analysis<br/>安全与可信度分析"]
+  S --> A
+  O --> A
+  A --> D{"需要人工确认？<br/>低置信 / 非宠物 / 高风险"}
+  D -- "是" --> HR["human_review<br/>interrupt() 暂停，等人工确认"]
+  HR --> WR
+  D -- "否" --> WR["writer<br/>组织回答 + SSE 流式输出"]
+  WR --> E(["返回回答"])
+
+  style V fill:#e8f0fe,stroke:#0f2b46
+  style A fill:#fff4e5,stroke:#b26a00
+  style HR fill:#fdecea,stroke:#b00020
+```
+
+**可信度分级贯穿链路（本项目的核心设计）**：识别出的置信度不只用于建档，还决定推荐精度与是否转人工 ——
+
+| 档位 | 判定 | 推荐策略 |
+|---|---|---|
+| 高 | 置信度 ≥ 0.75 且判定为猫 / 狗 | 按品种 + 体型 + 毛发全量匹配 |
+| 中 | 0.50 ~ 0.75 | 只按物种（猫 / 狗）匹配 |
+| 低 | < 0.50 或识别为非宠物 | 不推荐，转人工审核 |
+
+> 档位在**服务端重算**，前端传什么值都不影响结果。
+
+---
+
 ## 技术亮点
 
 - **AI 多 Agent 工作流**：基于 LangGraph 编排 8 个节点（视觉识别 → Supervisor 意图分类 → 专职 Agent → 安全分析 → 人工审核 → Writer），支持 Human-in-the-loop
