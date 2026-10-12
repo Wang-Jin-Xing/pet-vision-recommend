@@ -29,6 +29,7 @@ class WorkflowState(TypedDict, total=False):
     total: float                  # 订单合计金额
     delivery_info: dict           # 配送评估结果
     current_time: str             # 下单/咨询时间
+    store_info: dict              # 门店营业时间查询结果
 
     # ---- Analysis（安全分析）----
     needs_review: bool            # 是否触发人工审核

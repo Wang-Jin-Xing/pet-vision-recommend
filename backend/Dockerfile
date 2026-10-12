@@ -52,9 +52,13 @@ COPY . .
 # （compose 会把命名卷挂到 /app/uploads，镜像里的 /app/uploads 会被覆盖）
 RUN cp -r /app/uploads /app/seed_docs 2>/dev/null || true
 
-# 数据目录（SQLite + Chroma 向量库）与上传目录，
-# 运行时由 compose 挂载命名卷覆盖，提前建目录并授权给非 root 用户
-RUN mkdir -p /app/data /app/uploads \
+# 数据目录（SQLite + Chroma 向量库）、上传目录、嵌入模型缓存目录，
+# 运行时由 compose 挂载命名卷覆盖，提前建目录并授权给非 root 用户。
+# 注意 /app/.cache 必须在此处建好并 chown：compose 把命名卷挂到该路径，
+# 卷首次创建时会继承镜像里该目录的属主；若镜像中没有该目录，
+# 卷会以 root 属主创建，非 root 的 appuser 将无法写入 →
+# ChromaDB 下载嵌入模型失败（Permission denied: '/app/.cache/chroma'），知识库索引全部跳过。
+RUN mkdir -p /app/data /app/uploads /app/.cache/chroma \
     && groupadd --system appuser \
     && useradd --system --gid appuser --uid 10001 appuser \
     && chown -R appuser:appuser /app

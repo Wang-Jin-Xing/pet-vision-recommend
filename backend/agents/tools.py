@@ -463,12 +463,69 @@ def get_current_time() -> str:
         },
         ensure_ascii=False,
     )
+# 门店营业时间表（模拟数据，真实项目应查数据库/接口）
+_STORE_HOURS = {
+    "北京": {"hours": "09:00-21:00", "phone": "010-8888-0001", "address": "朝阳区建国路 88 号"},
+    "上海": {"hours": "09:30-21:30", "phone": "021-6666-0002", "address": "浦东新区世纪大道 100 号"},
+    "广州": {"hours": "10:00-22:00", "phone": "020-3333-0003", "address": "天河区天河路 200 号"},
+    "深圳": {"hours": "10:00-22:00", "phone": "0755-2222-0004", "address": "南山区深南大道 300 号"},
+    "沧州": {"hours": "08:30-20:00", "phone": "0317-1111-0005", "address": "运河区新华路 66 号"},
+}
+_STORE_DEFAULT = {"hours": "09:00-21:00", "phone": "400-000-8888", "address": "线上商城（全国配送）"}
+
+
+@tool
+def get_store_hours(city: str = "", date: str = "") -> str:
+    """查询宠物门店的营业时间、联系电话与地址。当用户询问门店几点开门、
+    几点关门、周末/节假日是否营业、门店在哪、门店电话时使用。
+    city 为城市名（如 北京/上海/广州/深圳/沧州），date 可选（如 周末/节假日）。
+    返回 JSON：{"city": 城市, "hours": 营业时间, "phone": 电话,
+    "address": 地址, "is_holiday": 是否节假日, "note": 补充说明}。"""
+    city = (city or "").strip()
+    date = (date or "").strip()
+
+    # 城市匹配：先精确、再包含（如"北京市"也能命中"北京"）
+    info = _STORE_HOURS.get(city)
+    if info is None:
+        for name, v in _STORE_HOURS.items():
+            if name in city or city in name:
+                city, info = name, v
+                break
+    matched = info is not None
+    info = info or _STORE_DEFAULT
+    if not city:
+        city = "线上"
+
+    # 节假日 / 周末提示
+    is_holiday = any(k in date for k in ("周末", "节假", "节", "国庆", "春节", "元旦"))
+    now = datetime.now()
+    today_is_weekend = now.weekday() >= 5
+    is_holiday = is_holiday or today_is_weekend
+
+    note = "节假日正常营业，高峰时段可能排队，建议提前致电确认。"
+    if not matched and city not in ("线上", ""):
+        note = f"暂未收录「{city}」的实体门店，以下为线上商城服务时间。"
+        info = _STORE_DEFAULT
+
+    return json.dumps(
+        {
+            "city": city,
+            "hours": info["hours"],
+            "phone": info["phone"],
+            "address": info["address"],
+            "is_holiday": is_holiday,
+            "matched_store": matched,
+            "note": note,
+        },
+        ensure_ascii=False,
+    )
 
 
 # 工具清单（供后续接入大模型 bind_tools / AgentExecutor 使用）
 ALL_TOOLS = [
     search_pet_care,
     recommend_products,
+    get_store_hours,
     calculate_total,
     check_delivery,
     get_current_time,

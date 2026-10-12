@@ -45,6 +45,7 @@ from agents.tools import (
     calculate_total,
     check_delivery,
     get_current_time,
+    get_store_hours,          # ← 新加
     list_categories,
     query_products,
     recommend_products,
@@ -63,9 +64,14 @@ REVIEW_AMOUNT_THRESHOLD = 500.0
 SENSITIVE_KEYWORDS = ["退款", "退货", "理赔", "投诉", "取消订单", "删除订单"]
 
 # 意图关键词
+# 注意：SENSITIVE_KEYWORDS（人工审核用）里那批操作词，这里必须同时登记一份。
+# 否则会出现「安全分析认得出是风险、主管却认不出该走订单流程」的认知不一致，
+# 表现为「我要退款」被判成养宠知识、审完还是答非所问。
 _ORDER_KEYWORDS = [
     "下单", "订单", "结算", "结账", "买单", "付款", "支付", "发货", "物流",
     "配送", "快递", "收货", "送到", "运费", "多久到", "什么时候到", "买",
+    # 与 SENSITIVE_KEYWORDS 对齐：退款 / 退货等属于订单类操作
+    "退款", "退货", "理赔", "投诉", "取消订单", "删除订单", "换货","门店", "营业", "几点开门", "几点关门", "营业时间", "地址", "电话", 
 ]
 _SHOPPING_KEYWORDS = [
     "推荐", "有什么", "有哪些", "商品", "价格", "多少钱", "便宜", "选购",
@@ -89,6 +95,9 @@ _REGION_KEYWORDS = [
     "江西", "辽宁", "吉林", "黑龙江", "山西", "广西", "云南", "贵州", "海南",
     "甘肃", "青海", "宁夏", "新疆", "西藏", "内蒙", "同城",
 ]
+# 已收录实体门店的城市（与 tools.py 的 _STORE_HOURS 对应）
+_STORE_CITIES = ["北京", "上海", "广州", "深圳", "沧州"]
+
 # 数量单位
 _QTY_UNITS = "袋|包|个|件|盒|罐|支|瓶|箱|条|只"
 # 中文数字
@@ -368,7 +377,7 @@ def _extract_region(question: str) -> str:
 
 
 def order_agent_node(state: WorkflowState) -> dict:
-    """解析订单 -> 调用 calculate_total / check_delivery / get_current_time。"""
+    """解析订单 -> 调用 calculate_total / check_delivery / get_current_time / get_store_hours。"""
     question = state["question"]
     items = _parse_order_items(question)
 
@@ -384,15 +393,31 @@ def order_agent_node(state: WorkflowState) -> dict:
     now_info = _json(get_current_time, {})
     current_time = f"{now_info['datetime']}（{now_info['weekday']}）"
 
+    # 门店营业时间：只有当问题里提到"门店/营业/几点/开门/关门/地址/电话"时才查
+    store_info = None
+    if any(k in question for k in ("门店", "营业", "开门", "关门", "几点", "营业时间", "地址", "电话", "实体店")):
+        city = region or (region if region else "")
+        # 城市优先从问题里取（region 可能为空）
+        for name in _STORE_CITIES:
+            if name in question:
+                city = name
+                break
+        store_info = _json(get_store_hours, {"city": city, "date": question})
+
     update = {
         "order_lines": lines,
         "total": round(total, 2),
         "delivery_info": delivery,
         "current_time": current_time,
     }
+    if store_info is not None:
+        update["store_info"] = store_info
     # 未解析出商品时给 Writer 一个标记，引导用户补充商品名/编号
     if not items:
         delivery["no_matched_product"] = True
+        # 但如果是问门店，就不该提示"缺少商品"
+        if store_info is not None:
+            delivery.pop("no_matched_product", None)
     return update
 
 
@@ -622,6 +647,18 @@ def _write_order(state: WorkflowState) -> str:
     total = float(state.get("total", 0.0) or 0.0)
     delivery = state.get("delivery_info", {}) or {}
     current_time = state.get("current_time", "")
+    # 门店营业时间查询：命中时直接回答，不走订单核算逻辑
+    store = state.get("store_info")
+    if store:
+        weekend = "（含周末）" if store.get("is_holiday") else ""
+        return (
+            f"### 🏪 {store['city']}门店信息\n\n"
+            f"- **营业时间**：{store['hours']}{weekend}\n"
+            f"- **联系电话**：{store['phone']}\n"
+            f"- **门店地址**：{store['address']}\n"
+            f"- **提示**：{store['note']}"
+        )
+
 
     if decision == "rejected":
         return (

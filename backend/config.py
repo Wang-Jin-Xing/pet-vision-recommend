@@ -1,13 +1,19 @@
 """应用配置：统一从环境变量 / .env 文件读取。"""
 import logging
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# 项目根目录（backend 的上一级）。用 __file__ 定位，保证无论从哪个目录启动都能读到
+# 根目录的 .env。此前写成相对路径 ".env"，而启动脚本会先 cd 到 backend，
+# 于是去读并不存在的 backend/.env —— LLM_API_KEY 永远为空，模型从未被调用。
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 
 logger = logging.getLogger("petpals")
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=str(_ENV_FILE), extra="ignore")
 
     # 应用
     APP_NAME: str = "PetPals"
