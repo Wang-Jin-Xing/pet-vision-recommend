@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-export const TOKEN_KEY = 'petpals_token'
-export const USER_KEY = 'petpals_user'
+export const TOKEN_KEY = 'petvision_token'
+export const USER_KEY = 'petvision_user'
 
 // 统一的 axios 实例，baseURL 通过 Vite 代理转发到 FastAPI 后端
 const api = axios.create({

@@ -30,7 +30,7 @@ export default function Footer() {
               🐾
             </span>
             <span className="bg-gradient-to-r from-pink-300 to-rose-400 bg-clip-text text-xl font-extrabold text-transparent">
-              PetPals
+              宠物影像识别与荐购系统
             </span>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-pink-100/50">
@@ -65,7 +65,7 @@ export default function Footer() {
         <div>
           <h4 className="mb-3 text-sm font-semibold text-pink-200">联系我们</h4>
           <ul className="space-y-2 text-sm text-pink-100/50">
-            <li>📧 hello@petpals.demo</li>
+            <li>📧 hello@petvision.demo</li>
             <li>🕐 客服时间 9:00 - 21:00</li>
             <li className="flex gap-3 pt-1 text-lg">
               <span className="cursor-pointer transition hover:scale-110">🐱</span>
@@ -77,7 +77,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-pink-500/10 py-4 text-center text-xs text-pink-100/35">
-        © 2026 PetPals 宠物生活服务平台 · 用心陪伴每一爪 🐾
+        © 2026 宠物影像识别与荐购系统 · 用心陪伴每一爪 🐾
       </div>
     </footer>
   )

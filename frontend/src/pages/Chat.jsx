@@ -483,7 +483,7 @@ export default function Chat() {
                 🐾
               </div>
               <h2 className="text-xl font-bold text-gray-800">
-                你好，我是 PetPals 智能助手
+                你好，我是宠物影像识别与荐购系统的智能助手
               </h2>
               <p className="mt-1 text-sm text-gray-500">
                 基于知识库为你解答养宠问题，试试下面的问题 👇

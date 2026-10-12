@@ -27,7 +27,7 @@ from config import settings
 from database import SessionLocal
 from models import Product
 
-logger = logging.getLogger("petpals")
+logger = logging.getLogger("petvision")
 
 # ======================================================================
 # ChromaDB 向量库

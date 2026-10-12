@@ -56,7 +56,7 @@ export default function Home() {
             🐱 毛孩子的精选好物 🐶
           </span>
           <h1 className="mt-4 text-3xl font-extrabold leading-tight text-white sm:text-4xl">
-            PetPals 宠物生活服务平台
+            宠物影像识别与荐购系统
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-pink-100 sm:text-base">
             精选宠物食品、玩具与洗护用品，还有 AI 智能助手随时解答养宠疑问，

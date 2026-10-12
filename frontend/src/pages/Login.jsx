@@ -33,7 +33,7 @@ export default function Login() {
 
   return (
     <div className="mx-auto mt-10 max-w-md">
-      <h1 className="mb-6 text-center text-2xl font-bold text-gray-800">登录 PetPals</h1>
+      <h1 className="mb-6 text-center text-2xl font-bold text-gray-800">登录宠物影像识别与荐购系统</h1>
       <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl bg-white p-6 shadow-sm">
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         <div>

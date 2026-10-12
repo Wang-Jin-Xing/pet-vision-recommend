@@ -2,7 +2,7 @@
 chcp 936 >nul
 cd /d "%~dp0"
 echo ============================================
-echo   PetPals 宠物生活服务平台（Docker 版）
+echo   宠物影像识别与荐购系统（Docker 版）
 echo ============================================
 echo.
 docker info >nul 2>&1

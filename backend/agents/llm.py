@@ -11,7 +11,7 @@ from typing import List, Optional
 
 from config import settings
 
-logger = logging.getLogger("petpals.llm")
+logger = logging.getLogger("petvision.llm")
 
 _llm = None
 
@@ -43,7 +43,7 @@ def get_llm():
 # ------------------------------------------------------------------
 # 意图分类
 # ------------------------------------------------------------------
-_INTENT_PROMPT = """你是宠物电商 PetPals 的智能助手意图分类器。
+_INTENT_PROMPT = """你是宠物电商「宠物影像识别与荐购系统」的智能助手意图分类器。
 根据用户问题，判断意图并只输出一个 JSON：{{"intent": "knowledge"|"shopping"|"order"}}
 
 - knowledge：养宠知识咨询（疫苗、驱虫、喂养、疾病症状、护理等）
@@ -92,7 +92,7 @@ def classify_intent(question: str) -> Optional[str]:
 # ------------------------------------------------------------------
 # RAG 回答生成（基于检索到的知识片段合成自然语言回答）
 # ------------------------------------------------------------------
-_KNOWLEDGE_PROMPT = """你是 PetPals 宠物生活服务平台的养宠顾问。请基于下方「参考资料」回答用户的问题。
+_KNOWLEDGE_PROMPT = """你是「宠物影像识别与荐购系统」的养宠顾问。请基于下方「参考资料」回答用户的问题。
 
 要求：
 1. 只依据参考资料作答，资料中没有的内容不要编造；

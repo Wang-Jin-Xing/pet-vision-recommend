@@ -15,7 +15,7 @@ from database import get_db
 
 router = APIRouter()
 
-logger = logging.getLogger("petpals")
+logger = logging.getLogger("petvision")
 
 ALLOWED_SUFFIXES = (".txt", ".md")
 

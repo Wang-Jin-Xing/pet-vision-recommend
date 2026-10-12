@@ -1,4 +1,4 @@
-# PetPals 一键部署：docker compose up --build
+# 宠物影像识别与荐购系统 · 一键部署：docker compose up --build
 #
 # 构建参数默认使用官方源；本机在仓库根目录 .env 中覆盖为国内镜像站，
 # 海外/CI 环境不提供 .env 时仍可直接构建。
@@ -11,13 +11,13 @@ services:
         PYTHON_BASE: ${PYTHON_BASE:-python:3.11-slim}
         PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
         APT_MIRROR: ${APT_MIRROR:-}
-    image: petpals-backend:latest
-    container_name: petpals-backend
+    image: petvision-backend:latest
+    container_name: petvision-backend
     environment:
       # 生产部署请在同级 .env 文件中设置 SECRET_KEY 为独立随机值
-      SECRET_KEY: ${SECRET_KEY:-petpals-dev-secret-please-change-in-production}
+      SECRET_KEY: ${SECRET_KEY:-petvision-dev-secret-please-change-in-production}
       # SQLite 与 Chroma 统一放到持久化卷目录（sqlite 绝对路径需 4 个斜杠）
-      DATABASE_URL: sqlite:////app/data/petpals.db
+      DATABASE_URL: sqlite:////app/data/petvision.db
       CHROMA_DIR: /app/data/chroma
       UPLOAD_DIR: /app/uploads
       # 直连后端端口或经 nginx(8080) 访问时允许的来源（经 nginx 同源访问不触发 CORS）
@@ -32,11 +32,11 @@ services:
       - "8000:8000"
     volumes:
       # SQLite 数据库 + Chroma 向量库持久化
-      - petpals-data:/app/data
+      - petvision-data:/app/data
       # 用户上传的原始文档持久化
-      - petpals-uploads:/app/uploads
+      - petvision-uploads:/app/uploads
       # ChromaDB 嵌入模型缓存（首次启动下载一次，重建容器不丢失）
-      - petpals-cache:/app/.cache
+      - petvision-cache:/app/.cache
     restart: unless-stopped
 
   # ===== 前端：Nginx 托管 SPA 静态文件，/api 反代到后端 =====
@@ -47,8 +47,8 @@ services:
         NODE_BASE: ${NODE_BASE:-node:20-alpine}
         NGINX_BASE: ${NGINX_BASE:-nginx:alpine}
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org/}
-    image: petpals-frontend:latest
-    container_name: petpals-frontend
+    image: petvision-frontend:latest
+    container_name: petvision-frontend
     ports:
       - "8080:80"
     depends_on:
@@ -57,9 +57,9 @@ services:
     restart: unless-stopped
 
 volumes:
-  petpals-data:
-    name: petpals-data
-  petpals-uploads:
-    name: petpals-uploads
-  petpals-cache:
-    name: petpals-cache
+  petvision-data:
+    name: petvision-data
+  petvision-uploads:
+    name: petvision-uploads
+  petvision-cache:
+    name: petvision-cache

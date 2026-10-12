@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useReducer } from 'react
 // 购物车全局状态：useReducer 管理 + localStorage 持久化（刷新不丢）
 const CartContext = createContext(null)
 
-const STORAGE_KEY = 'petpals_cart'
+const STORAGE_KEY = 'petvision_cart'
 
 // ---------- 从 localStorage 读取初始购物车（带容错与数据清洗） ----------
 function loadInitialItems() {

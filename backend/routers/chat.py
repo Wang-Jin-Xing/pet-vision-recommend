@@ -33,7 +33,7 @@ from auth import get_current_user
 from database import SessionLocal, get_db
 from services import pet_profile as profile_service
 
-logger = logging.getLogger("petpals")
+logger = logging.getLogger("petvision")
 
 router = APIRouter()
 # 审核接口挂在 /api 前缀下（POST /api/review），独立于 /api/chat

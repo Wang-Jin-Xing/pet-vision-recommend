@@ -11,7 +11,7 @@ from database import SessionLocal, engine
 from routers import auth, chat, history, orders, pets, products, upload
 from routers.chat import review_router
 
-logger = logging.getLogger("petpals")
+logger = logging.getLogger("petvision")
 
 
 def _migrate_sqlite() -> None:
@@ -202,7 +202,7 @@ def seed_knowledge_base() -> None:
 seed_knowledge_base()
 
 
-app = FastAPI(title="PetPals 宠物生活服务平台 API", version="0.1.0")
+app = FastAPI(title="宠物影像识别与荐购系统 API", version="0.1.0")
 
 # 跨域来源白名单（由 CORS_ORIGINS 配置，默认仅本地开发前端）
 app.add_middleware(
@@ -216,7 +216,7 @@ app.add_middleware(
 
 @app.get("/", tags=["health"])
 def health_check():
-    return {"status": "ok", "app": "PetPals"}
+    return {"status": "ok", "app": "pet-vision-recommend"}
 
 
 # 路由注册

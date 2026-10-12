@@ -1,4 +1,4 @@
-"""PetPals 前端一键启动（不依赖 npm / node）。
+"""宠物影像识别与荐购系统 · 前端一键启动（不依赖 npm / node）。
 
 作用：
 1. 托管 frontend/dist 里已构建好的网页（首页、商品、聊天页面）；
@@ -117,7 +117,7 @@ def main():
         print("请确认 frontend/dist 存在。")
         sys.exit(1)
     print("=" * 56)
-    print("  PetPals 前端已启动")
+    print("  宠物影像识别与荐购系统 · 前端已启动")
     print(f"  浏览器打开： http://127.0.0.1:{PORT}")
     print(f"  后端地址：   {BACKEND}")
     print("=" * 56)

@@ -73,7 +73,7 @@ export default function Navbar() {
             🐾
           </span>
           <span className="bg-gradient-to-r from-pink-300 to-rose-400 bg-clip-text text-xl font-extrabold tracking-wide text-transparent">
-            PetPals
+            宠物影像识别与荐购系统
           </span>
         </Link>
 

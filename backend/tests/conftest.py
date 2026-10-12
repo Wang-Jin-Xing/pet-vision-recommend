@@ -11,7 +11,7 @@ from pathlib import Path
 
 # ---- 1. 在导入应用前准备隔离的测试环境变量 ----
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
-_TEST_ROOT = Path(tempfile.mkdtemp(prefix="petpals-pytest-"))
+_TEST_ROOT = Path(tempfile.mkdtemp(prefix="petvision-pytest-"))
 
 # 让 `import models / import main` 等扁平导入可用
 sys.path.insert(0, str(_BACKEND_DIR))

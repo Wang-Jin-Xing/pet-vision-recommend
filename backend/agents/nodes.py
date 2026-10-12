@@ -55,7 +55,7 @@ from agents.tools import (
 from services.pet_profile import grade_confidence
 from services.recommend import filter_by_profile
 
-logger = logging.getLogger("petpals.nodes")
+logger = logging.getLogger("petvision.nodes")
 
 # 意图常量
 INTENT_KNOWLEDGE = "knowledge"
@@ -610,7 +610,7 @@ def _write_knowledge(state: WorkflowState) -> str:
         )
         return "\n".join(parts)
     return (
-        "### 你好，我是 PetPals 智能助手\n\n"
+        "### 你好，我是宠物影像识别与荐购系统的智能助手\n\n"
         f"知识库中暂时没有检索到与「**{question}**」直接相关的资料。你可以：\n\n"
         "1. 在聊天页左侧上传 **txt / md** 格式的养宠资料，我会基于文档回答\n"
         "2. 换一个更具体的关键词再试一次\n\n"

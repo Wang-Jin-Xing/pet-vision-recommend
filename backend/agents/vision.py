@@ -1,6 +1,6 @@
 """视觉识别：宠物照片 → 结构化档案字段。
 
-搬迁自 PetSight（原实现已实测：3 种畸形模型输出全部兜住），接入 PetPals 的配置体系。
+搬迁自 PetSight（原实现已实测：3 种畸形模型输出全部兜住），接入本项目的配置体系。
 
 设计原则：
 - **纯标准库** urllib 直调 OpenAI 兼容视觉接口，不引入额外依赖，也不依赖 langchain 是否可用；
@@ -28,7 +28,7 @@ from typing import Dict, List, Optional
 
 from config import settings
 
-logger = logging.getLogger("petpals.vision")
+logger = logging.getLogger("petvision.vision")
 
 # 期望模型输出的 JSON 结构（写进提示词，强制结构化）
 SCHEMA_PROMPT = (

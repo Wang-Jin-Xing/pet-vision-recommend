@@ -1,10 +1,11 @@
-# PetPals 宠物生活服务平台
+# 宠物影像识别与荐购系统
 
-> 一个面向面试的全栈实战项目：宠物用品商城 + AI 养宠助手（多 Agent + RAG + Human-in-the-loop）。
+> 一个面向面试的全栈实战项目：**拍一张宠物照片 → 识别品种 / 体型 / 毛发状况 → 按识别可信度分级荐购**。
+> 多模态识别 + 可信度分级 + 多 Agent 工作流 + RAG + Human-in-the-loop，一个项目把这几件事串成一条完整链路。
 > 前后端分离、Docker 一键部署、GitHub Actions CI，覆盖从产品到工程化的完整链路。
 
 **作者**：Wang Jin Xing  
-**仓库**：https://github.com/Wang-Jin-Xing/petpals-fullstack
+**仓库**：https://github.com/Wang-Jin-Xing/pet-vision-recommend
 
 ---
 
@@ -75,9 +76,9 @@ docker compose restart backend   # 只重启后端
 
 | 卷名 | 存的内容 |
 |------|----------|
-| `petpals-data` | SQLite 数据库（用户/商品/订单/对话）+ Chroma 向量知识库 |
-| `petpals-uploads` | 上传的知识文档原文 |
-| `petpals-cache` | ChromaDB 嵌入模型缓存（首次下载后重建容器不丢失） |
+| `petvision-data` | SQLite 数据库（用户/商品/订单/对话）+ Chroma 向量知识库 |
+| `petvision-uploads` | 上传的知识文档原文 |
+| `petvision-cache` | ChromaDB 嵌入模型缓存（首次下载后重建容器不丢失） |
 
 > ⚠️ 只有执行 `docker compose down -v`（多了 `-v`）才会删除数据卷，平时不要加。
 
@@ -164,7 +165,7 @@ supervisor（LLM 意图分类：knowledge / shopping / order）
 ## 三、目录结构
 
 ```
-petpals-fullstack/
+pet-vision-recommend/
 ├── docker-compose.yml            # Docker 一键编排（前后端 + 数据卷）
 ├── .env                           # 本机国内镜像加速配置（不要提交到 git）
 ├── .github/workflows/deploy.yml  # CI：推送到 main 自动跑测试→构建前端→构建镜像
@@ -259,7 +260,7 @@ pytest -q                             # 159 个用例
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `SECRET_KEY` | 内置开发值（启动会告警） | **上线必须改成随机长字符串** |
-| `DATABASE_URL` | `sqlite:///./petpals.db` | 数据库连接串 |
+| `DATABASE_URL` | `sqlite:///./petvision.db` | 数据库连接串 |
 | `UPLOAD_DIR` | `./uploads` | 上传文件目录 |
 | `CHROMA_DIR` | `./data/chroma` | 向量库目录 |
 | `MAX_UPLOAD_BYTES` | `2097152`（2MB） | 单文件大小上限 |
