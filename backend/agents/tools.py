@@ -258,6 +258,10 @@ def _product_to_dict(p: Product) -> dict:
         "price": round(p.price, 2),
         "category": p.category,
         "suitable": p.suitable,
+        # 结构化适用条件：供「按宠物档案筛选」使用（suitable 只是展示文案）
+        "species": p.species,
+        "size": p.size,
+        "stage": p.stage,
         "stock": p.stock,
         "tags": p.tags or [],
     }

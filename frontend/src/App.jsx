@@ -8,6 +8,7 @@ import Register from './pages/Register.jsx'
 import Cart from './pages/Cart.jsx'
 import Orders from './pages/Orders.jsx'
 import Chat from './pages/Chat.jsx'
+import MyPets from './pages/MyPets.jsx'
 
 export default function App() {
   const location = useLocation()
@@ -41,6 +42,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Orders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pets"
+            element={
+              <ProtectedRoute>
+                <MyPets />
               </ProtectedRoute>
             }
           />

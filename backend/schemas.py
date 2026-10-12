@@ -127,11 +127,21 @@ class OrderStatusUpdate(BaseModel):
 
 
 # ============ AI 聊天 ============
+# 宠物照片以 data URL 随消息提交时的长度上限（约 8 MB 图片）
+ImageDataUrl = Annotated[str, Field(max_length=11_000_000)]
+
+
 class ChatRequest(BaseModel):
     """普通问答请求体；不传 thread_id 时自动新建会话。"""
     message: ChatMessageStr
     thread_id: Optional[ThreadIdStr] = Field(
         default=None, description="会话标识（LangGraph thread_id），继续已有对话时传入"
+    )
+    image_data_url: Optional[ImageDataUrl] = Field(
+        default=None, description="随消息上传的宠物照片（data URL），带上会先做视觉识别"
+    )
+    pet_profile_id: Optional[int] = Field(
+        default=None, ge=1, description="选用的宠物档案 ID，推荐将按该档案条件筛选"
     )
 
 
@@ -143,6 +153,9 @@ class ReviewInfo(BaseModel):
     total: float = 0.0
     reasons: List[str] = []
     description: str = ""
+    # 因识别问题触发审核时，把识别结果与档位一并给审核人看
+    pet_profile: Optional[dict] = None
+    confidence_grade: str = ""
 
 
 class ChatReply(BaseModel):
@@ -159,6 +172,12 @@ class ChatStreamRequest(BaseModel):
     message: ChatMessageStr
     thread_id: Optional[ThreadIdStr] = Field(
         default=None, description="传入则继续已有对话，不传则新建对话"
+    )
+    image_data_url: Optional[ImageDataUrl] = Field(
+        default=None, description="随消息上传的宠物照片（data URL），带上会先做视觉识别"
+    )
+    pet_profile_id: Optional[int] = Field(
+        default=None, ge=1, description="选用的宠物档案 ID，推荐将按该档案条件筛选"
     )
 
 
@@ -203,6 +222,65 @@ class ConversationOut(BaseModel):
 class DocumentOut(BaseModel):
     id: int
     filename: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ============ 宠物视觉识别 ============
+class VisionResult(BaseModel):
+    """一次照片识别的结果（**不入库**，供前端展示与用户确认）。"""
+    species: str
+    breed: str
+    size: str = "不确定"
+    size_code: str = ""
+    body_condition: str = "——"
+    coat_condition: str = "——"
+    health_notes: str = "——"
+    confidence: float = 0.0
+
+    # 识别来源：vlm 正常 / rejected 拒识 / local_fallback 未配密钥 / vlm_error 调用失败
+    mode: str = ""
+    rejected: bool = False
+    reject_reason: str = ""
+
+    # 由置信度判出的档位（high / medium / low），前端据此提示"推荐能有多准"
+    grade: str = ""
+    grade_cn: str = ""
+    # 是否允许建档：拒识结果为 False，但不阻断——用户仍可手动改后建档
+    can_save: bool = True
+
+    # 图片落盘后的路径，确认建档时原样回传，避免二次上传
+    image_path: Optional[str] = None
+
+
+class PetProfileCreate(BaseModel):
+    """确认建档请求：把识别结果（用户可能在前端修正过）提交入库。"""
+    name: str = Field(default="我的宠物", max_length=64)
+    species: str = Field(min_length=1, max_length=64)
+    breed: str = Field(default="未知", max_length=64)
+    size: str = Field(default="不确定", max_length=32)
+    body_condition: str = Field(default="——", max_length=128)
+    coat_condition: str = Field(default="——", max_length=128)
+    health_notes: str = Field(default="——", max_length=1000)
+    confidence: float = Field(default=0.0, ge=0, le=1)
+    image_path: Optional[str] = Field(default=None, max_length=512)
+
+
+class PetProfileOut(BaseModel):
+    id: int
+    name: str
+    species: str
+    breed: str
+    body_condition: str
+    coat_condition: str
+    health_notes: str
+    species_code: str
+    size_code: str
+    confidence: float
+    confidence_grade: str
+    review_status: str
+    image_path: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

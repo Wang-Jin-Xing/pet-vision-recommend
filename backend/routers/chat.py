@@ -31,6 +31,7 @@ from agents.graph import (
 from agents.review import review_store
 from auth import get_current_user
 from database import SessionLocal, get_db
+from services import pet_profile as profile_service
 
 logger = logging.getLogger("petpals")
 
@@ -126,6 +127,21 @@ def _ensure_not_pending(thread_id: str | None) -> None:
 # POST /api/chat —— 普通一次性问答
 # =====================================================================
 
+def _resolve_profile(db: Session, user_id: int, profile_id):
+    """取用户选用的宠物档案，转成工作流 state 结构。
+
+    返回 (pet_profile | None, confidence_grade)。
+    档案不存在或不属于本人 → 404（不泄露"该 id 存在"）。
+    必须在同步阶段完成：SSE 生成器在工作线程跑，不能带上 ORM 会话。
+    """
+    if not profile_id:
+        return None, ""
+    prof = profile_service.get_owned_profile(db, user_id, profile_id)
+    if prof is None:
+        raise HTTPException(status_code=404, detail="宠物档案不存在")
+    return profile_service.to_workflow_profile(prof), prof.confidence_grade
+
+
 @router.post("", response_model=schemas.ChatReply)
 def chat(
     payload: schemas.ChatRequest,
@@ -142,6 +158,9 @@ def chat(
         raise HTTPException(status_code=400, detail="消息内容不能为空")
     _ensure_not_pending(payload.thread_id)
 
+    # 先解析档案：档案不存在时直接 404，不去创建会话留下空壳
+    pet_profile, grade = _resolve_profile(db, current_user.id, payload.pet_profile_id)
+
     conversation = _get_or_create_conversation(
         db, payload.thread_id, current_user.id, title=message
     )
@@ -149,7 +168,12 @@ def chat(
 
     try:
         result = run_chat(
-            message, user_id=current_user.id, thread_id=conversation.thread_id
+            message,
+            user_id=current_user.id,
+            thread_id=conversation.thread_id,
+            image_data_url=payload.image_data_url,
+            pet_profile=pet_profile,
+            confidence_grade=grade,
         )
     except Exception:
         # 工作流内部异常不向客户端泄露细节，记录完整堆栈便于排查
@@ -199,6 +223,9 @@ def chat_stream(
         raise HTTPException(status_code=400, detail="消息内容不能为空")
     _ensure_not_pending(payload.thread_id)
 
+    # 先解析档案（不存在 → 404，不留空会话）
+    pet_profile, grade = _resolve_profile(db, current_user.id, payload.pet_profile_id)
+
     # 会话校验 / 创建在同步阶段完成，权限错误能返回标准 4xx
     conversation = _get_or_create_conversation(
         db, payload.thread_id, current_user.id, title=message
@@ -210,6 +237,7 @@ def chat_stream(
     thread_id = conversation.thread_id
     conversation_id = conversation.id
     user_id = current_user.id
+    image_data_url = payload.image_data_url
 
     def event_stream():
         # 生成器在 anyio 工作线程中迭代，请求级 Session 非线程安全，
@@ -222,7 +250,12 @@ def chat_stream(
             review_payload = None
             answer = ""
             for ev, data in stream_workflow(
-                message, user_id=user_id, thread_id=thread_id
+                message,
+                user_id=user_id,
+                thread_id=thread_id,
+                image_data_url=image_data_url,
+                pet_profile=pet_profile,
+                confidence_grade=grade,
             ):
                 if ev == "progress":
                     yield _sse("progress", {"label": NODE_LABELS.get(data, data)})

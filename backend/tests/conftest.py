@@ -20,6 +20,7 @@ os.environ.setdefault("SECRET_KEY", "pytest-secret-key")
 os.environ["DATABASE_URL"] = f"sqlite:///{(_TEST_ROOT / 'test.db').as_posix()}"
 os.environ["UPLOAD_DIR"] = str(_TEST_ROOT / "uploads")
 os.environ["CHROMA_DIR"] = str(_TEST_ROOT / "chroma")
+os.environ["PET_IMAGE_DIR"] = str(_TEST_ROOT / "pet_images")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -119,3 +120,15 @@ def make_product(db):
         return product
 
     return _make
+
+
+@pytest.fixture()
+def offline_llm(monkeypatch):
+    """让所有 LLM 调用回落本地确定性逻辑——测试不联网。
+
+    项目根 .env 里可能配了真实 LLM_API_KEY，conftest 不会清掉它，
+    凡是要跑工作流的用例都应该带上这个夹具做隔离。
+    """
+    from agents import llm as llm_helper
+
+    monkeypatch.setattr(llm_helper, "get_llm", lambda: None)

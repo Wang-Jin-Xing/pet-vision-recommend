@@ -40,6 +40,7 @@ from typing import List, Optional
 from langgraph.types import interrupt
 
 from agents import llm as llm_helper
+from agents import vision
 from agents.state import WorkflowState
 from agents.tools import (
     calculate_total,
@@ -51,6 +52,8 @@ from agents.tools import (
     recommend_products,
     search_pet_care,
 )
+from services.pet_profile import grade_confidence
+from services.recommend import filter_by_profile
 
 logger = logging.getLogger("petpals.nodes")
 
@@ -114,6 +117,62 @@ _GENERIC_NAME_TOKENS = {
 def _json(tool, payload: dict) -> dict:
     """调用 @tool 工具并解析其 JSON 字符串结果。"""
     return json.loads(tool.invoke(payload))
+
+
+# =====================================================================
+# Vision Agent：宠物照片识别（可选前置节点）
+# =====================================================================
+
+def route_start(state: WorkflowState) -> str:
+    """入口条件边：**带了照片**才先进视觉节点，否则直接进 supervisor。
+
+    这条边是「增量挂载」的关键——不带图时走的是与改造前**完全相同**的老路径，
+    既有 7 个节点一行没动，所以原有行为不会漂移。
+    """
+    return "vision_agent" if state.get("image_data_url") else "supervisor"
+
+
+def vision_agent_node(state: WorkflowState) -> dict:
+    """把用户上传的宠物照片识别成结构化档案信息。
+
+    识别结果写入 pet_profile / confidence_grade，供后续两个节点使用：
+    - shopping_agent：按档案条件筛商品（**档位不同，筛的条件不同**）
+    - analysis      ：低档档案触发人工审核
+
+    识别失败**不阻断流程**：降级成"无档案"，后续按普通咨询处理。
+    """
+    data_url = state.get("image_data_url") or ""
+    try:
+        result = vision.classify_data_url(data_url)
+    except Exception:  # noqa: BLE001 —— 识别只是增强，绝不能拖垮主流程
+        logger.exception("视觉识别异常，按无档案继续")
+        result = {
+            "species": "未知", "species_code": "other", "size_code": "unknown",
+            "confidence": 0.0, "_mode": "vlm_error",
+        }
+
+    grade = grade_confidence(
+        result.get("confidence", 0.0), result.get("species_code", "other")
+    )
+    profile = {
+        "species": result.get("species", "未知"),
+        "species_code": result.get("species_code", "other"),
+        "breed": result.get("breed", "未知"),
+        "size": result.get("size", "不确定"),
+        "size_code": result.get("size_code", "unknown"),
+        "body_condition": result.get("body_condition", "——"),
+        "coat_condition": result.get("coat_condition", "——"),
+        "health_notes": result.get("health_notes", "——"),
+        "confidence": result.get("confidence", 0.0),
+        "rejected": bool(result.get("rejected")),
+        "reject_reason": result.get("reject_reason", ""),
+        "mode": result.get("_mode", ""),
+    }
+    logger.info(
+        "视觉识别：物种=%s 体型=%s 置信度=%.2f 档位=%s",
+        profile["species"], profile["size"], profile["confidence"], grade,
+    )
+    return {"pet_profile": profile, "confidence_grade": grade}
 
 
 # =====================================================================
@@ -289,9 +348,21 @@ def shopping_agent_node(state: WorkflowState) -> dict:
         products = result.get("products", [])
         label = keyword or category or "全部商品"
 
+    products = products[:limit]
+
+    # 本次请求带了宠物照片时（视觉节点已产出档案），按档案条件再筛一次。
+    # **档位不同、筛的条件不同**：high 全量条件 / medium 只按物种 / low 完全不筛。
+    note = ""
+    profile = state.get("pet_profile")
+    if profile:
+        products, note = filter_by_profile(
+            products, profile, state.get("confidence_grade", "")
+        )
+
     return {
-        "product_results": products[:limit],
+        "product_results": products,
         "recommend_keyword": label,
+        "recommend_note": note,
     }
 
 
@@ -426,7 +497,15 @@ def order_agent_node(state: WorkflowState) -> dict:
 # =====================================================================
 
 def analysis_node(state: WorkflowState) -> dict:
-    """订单金额 > 500 元 或 含敏感关键词时，置 needs_review=True。"""
+    """是否需要人工审核。三种触发情况：
+
+    1. 订单金额超过阈值；
+    2. 命中敏感操作关键词；
+    3. **照片识别置信度过低**。
+
+    第 3 条是本项目新加的：识别不可信时**转人工确认，而不是直接拒掉用户**。
+    它复用了同一套 interrupt/resume 机制——图结构一行没改，只是多了一个触发理由。
+    """
     reasons: List[str] = []
     question = state.get("question", "")
 
@@ -439,6 +518,12 @@ def analysis_node(state: WorkflowState) -> dict:
     hit = [k for k in SENSITIVE_KEYWORDS if k in question]
     if hit:
         reasons.append("包含敏感操作关键词：" + "、".join(hit))
+
+    # 第三条：低置信识别结果 → 转人工确认（把 HITL 从「风控」用成「降级兜底」）
+    profile = state.get("pet_profile")
+    if profile and state.get("confidence_grade") == "low":
+        conf = float(profile.get("confidence", 0.0) or 0.0)
+        reasons.append(f"照片识别置信度较低（{conf:.0%}），需人工确认识别结果")
 
     return {"needs_review": bool(reasons), "review_reasons": reasons}
 
@@ -467,6 +552,9 @@ def human_review_node(state: WorkflowState) -> dict:
         "total": float(state.get("total", 0.0) or 0.0),
         "reasons": state.get("review_reasons", []),
         "current_time": state.get("current_time", ""),
+        # 因识别问题触发审核时，把识别结果一并带给审核人看
+        "pet_profile": state.get("pet_profile"),
+        "confidence_grade": state.get("confidence_grade", ""),
         "description": (
             "该请求触发了人工审核规则，请确认是否继续："
             + "；".join(state.get("review_reasons", []))
@@ -608,13 +696,16 @@ def _write_shopping(state: WorkflowState) -> str:
         else f"实时读取商城数据库，共找到 **{len(products)}** 件在售商品：\n\n"
     )
 
-    parts = [
-        title,
-        lead,
+    parts = [title, lead]
+    note = state.get("recommend_note")
+    if note:
+        # 说明这次的推荐用到了照片识别结果（以及可信度在哪一档）
+        parts.append(f"📷 {note}\n\n")
+    parts.append(
         "| ID | 商品 | 分类 | 适用 | 价格 | 库存 |\n"
         "| --- | --- | --- | --- | --- | --- |\n"
-        f"{rows}\n",
-    ]
+        f"{rows}\n"
+    )
 
     cheapest = min(products, key=lambda p: p["price"])
     if is_compare:
@@ -727,6 +818,21 @@ def _write_order(state: WorkflowState) -> str:
 
 def writer_node(state: WorkflowState) -> dict:
     """根据意图与审核决定，组织最终 Markdown 回答。"""
+    # 识别不可信、被人工驳回：与具体意图无关，统一告知"本次不采信照片信息"。
+    # 放在最前面统一处理，免得三种回答各写一份。
+    if (
+        state.get("review_decision") == "rejected"
+        and state.get("confidence_grade") == "low"
+        and state.get("pet_profile")
+    ):
+        return {"answer": (
+            "### 识别结果未通过人工确认\n\n"
+            "这张照片没能得到足够可信的识别结果，人工审核未通过，"
+            "所以**这次不采信照片里的信息**。\n\n"
+            "- 可以重拍一张清晰、正面的猫/狗照片再试\n"
+            "- 也可以直接说明需求，例如「推荐几款猫粮」\n"
+        )}
+
     if state.get("intent") == INTENT_SHOPPING:
         answer = _write_shopping(state)
     elif state.get("intent") == INTENT_ORDER:

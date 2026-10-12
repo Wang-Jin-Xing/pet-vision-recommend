@@ -34,6 +34,9 @@ class User(Base):
     # 关联关系
     orders: Mapped[List["Order"]] = relationship(back_populates="user")
     documents: Mapped[List["Document"]] = relationship(back_populates="user")
+    pet_profiles: Mapped[List["PetProfile"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Product(Base):
@@ -45,8 +48,14 @@ class Product(Base):
     description: Mapped[str] = mapped_column(Text, default="")
     price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     category: Mapped[str] = mapped_column(String(64), default="其他")
-    # 适用对象，如：成犬 / 幼猫 / 全阶段
+    # 适用对象，如：成犬 / 幼猫 / 全阶段（**展示文案**，给人看的）
     suitable: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    # ↓ 适用条件的**结构化**版本（机器可读），供「按宠物档案筛选」使用。
+    #   原先只靠 suitable 这串中文做字符串比较，文案一改筛选就崩；这里改成稳定枚举值。
+    #   species: cat / dog / both    size: small / medium / large / all    stage: puppy / adult / all
+    species: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    size: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    stage: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     # 标签列表，以 JSON 数组存储，如 ["热销", "低敏"]
     tags: Mapped[Optional[list]] = mapped_column(JSON, default=list)
     image_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
@@ -141,3 +150,41 @@ class ChatMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     conversation: Mapped["Conversation"] = relationship(back_populates="messages")
+
+
+class PetProfile(Base):
+    """宠物档案表：由「拍照识别」产生的结构化档案，是商品推荐的输入维度。
+
+    与 PetSight 的 pets 表字段基本一致，另加几个为「可信度分级」服务的列：
+    - species_code / size_code：物种与体型的归一值（cat·dog·other / small·medium·large·unknown），
+                         供结构化筛选，避免每次都从原文重算。**注意 size_code 是"体型大小"，
+                         与 body_condition（体态：偏胖/偏瘦）不是一回事。**
+    - confidence_grade ：归档当时的档位快照（high/medium/low）。存快照而非现算，
+                         是为了让"当时按哪一档推荐"可追溯——即便日后调整阈值，
+                         已有档案的档位也不会悄悄漂移。
+    - review_status    ：auto 自动通过 / pending 待人工确认 / confirmed 已确认
+    """
+    __tablename__ = "pet_profiles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, default="我的宠物")
+
+    # 识别结果（原文字段，保留模型给的表述）
+    species: Mapped[str] = mapped_column(String(64), nullable=False, default="未知")
+    breed: Mapped[str] = mapped_column(String(64), nullable=False, default="未知")
+    body_condition: Mapped[str] = mapped_column(String(128), default="——")
+    coat_condition: Mapped[str] = mapped_column(String(128), default="——")
+    health_notes: Mapped[str] = mapped_column(Text, default="——")
+
+    # 分级决策依据
+    species_code: Mapped[str] = mapped_column(String(16), nullable=False, default="other")
+    size_code: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    confidence_grade: Mapped[str] = mapped_column(String(16), nullable=False, default="low")
+    review_status: Mapped[str] = mapped_column(String(16), nullable=False, default="auto")
+
+    image_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="pet_profiles")

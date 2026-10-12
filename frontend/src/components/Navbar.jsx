@@ -52,6 +52,11 @@ export default function Navbar() {
         )}
       </Link>
       {user && (
+        <Link to="/pets" className={linkClass(location.pathname === '/pets')}>
+          我的宠物
+        </Link>
+      )}
+      {user && (
         <Link to="/orders" className={linkClass(location.pathname === '/orders')}>
           我的订单
         </Link>

@@ -10,6 +10,13 @@ class WorkflowState(TypedDict, total=False):
     # ---- 输入 ----
     user_id: Optional[int]        # 当前登录用户 ID（未登录场景为 None）
     question: str                 # 用户原始问题
+    # 随消息一起上传的宠物照片（data URL）。为空 = 本次没带图，
+    # 此时工作流与加视觉之前**完全一致**（不经过 vision_agent 节点）。
+    image_data_url: Optional[str]
+
+    # ---- Vision Agent（视觉识别）----
+    pet_profile: Optional[dict]   # 识别出的宠物档案字段（物种/品种/体型/毛发/置信度）
+    confidence_grade: str         # 识别置信度档位：high / medium / low
 
     # ---- Supervisor（意图路由）----
     # knowledge 养宠知识 / shopping 商品推荐 / order 订单与配送
@@ -19,9 +26,10 @@ class WorkflowState(TypedDict, total=False):
     context: List[str]            # 知识库检索到的资料片段
 
     # ---- Shopping Agent（商品推荐）----
-    # [{"id","name","price","category","suitable","stock","tags"}]
+    # [{"id","name","price","category","suitable","species","size","stage","stock","tags"}]
     product_results: List[dict]
     recommend_keyword: str        # 实际用于推荐检索的关键词
+    recommend_note: str           # 按宠物档案筛选时的说明（未使用档案时为空）
 
     # ---- Order Agent（下单核算）----
     # [{"product_id","name","quantity","unit_price","subtotal","available"}]

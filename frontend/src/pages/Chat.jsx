@@ -150,6 +150,13 @@ export default function Chat() {
   const [uploading, setUploading] = useState(false)
   const [uploadMsg, setUploadMsg] = useState('')
 
+  // 宠物档案：选中后推荐按档案条件走；也可以直接发一张照片即时识别
+  const [pets, setPets] = useState([])
+  const [profileId, setProfileId] = useState('')
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState('')
+  const photoRef = useRef(null)
+
   const abortRef = useRef(null)
   const bottomRef = useRef(null)
 
@@ -174,6 +181,11 @@ export default function Chat() {
 
   useEffect(() => {
     loadHistory()
+    // 拉取宠物档案，供下方"按档案推荐"下拉使用（没有档案也不影响正常问答）
+    api
+      .get('/pets')
+      .then(({ data }) => setPets(data))
+      .catch(() => {})
     return () => abortRef.current?.abort()
   }, [])
 
@@ -207,9 +219,26 @@ export default function Chat() {
     }))
   }
 
+  // 把选中的照片读成 data URL —— 后端 vision_agent 收的就是这个格式
+  const fileToDataUrl = (f) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(f)
+    })
+
+  const clearPhoto = () => {
+    setImageFile(null)
+    setImagePreview('')
+    if (photoRef.current) photoRef.current.value = ''
+  }
+
   const sendMessage = async (rawText) => {
     const text = (rawText ?? input).trim()
-    if (!text || streaming) return
+    // 只发照片不打字也允许，自动补一句默认问法
+    if ((!text && !imageFile) || streaming) return
+    const payloadText = text || '看看我家宠物适合用什么'
 
     setInput('')
     // 本地消息用随机 _uid，避免与历史消息的数字 id 撞 React key
@@ -217,7 +246,7 @@ export default function Chat() {
     const assistantKey = `local-${crypto.randomUUID()}`
     setMessages((prev) => [
       ...prev,
-      { _uid: userUid, role: 'user', content: text, pending: false },
+      { _uid: userUid, role: 'user', content: payloadText, pending: false },
       { _uid: assistantKey, role: 'assistant', content: '', pending: true },
     ])
     setStreaming(true)
@@ -233,15 +262,21 @@ export default function Chat() {
 
     try {
       const token = localStorage.getItem(TOKEN_KEY)
+      // 带上档案 id 或刚选的照片：后端据此按档案条件推荐，或先做一次识别
+      const payload = { message: payloadText, thread_id: currentId }
+      if (profileId) payload.pet_profile_id = Number(profileId)
+      if (imageFile) payload.image_data_url = await fileToDataUrl(imageFile)
+
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ message: text, thread_id: currentId }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       })
+      if (imageFile) clearPhoto()
 
       if (!res.ok) {
         let detail = '服务暂时不可用，请稍后再试'
@@ -491,6 +526,67 @@ export default function Chat() {
 
         {/* 输入区 */}
         <div className="border-t border-pink-100 bg-white p-3">
+          {/* 宠物档案 / 拍照：让商品推荐能"因宠而异" */}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <select
+              value={profileId}
+              onChange={(e) => setProfileId(e.target.value)}
+              disabled={streaming}
+              className="rounded-lg border border-pink-200 bg-white px-2 py-1 text-xs text-gray-600 outline-none transition focus:border-pink-400 disabled:opacity-50"
+            >
+              <option value="">不带宠物档案</option>
+              {pets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}（{p.species}）
+                </option>
+              ))}
+            </select>
+
+            <input
+              ref={photoRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const picked = e.target.files?.[0]
+                if (!picked) return
+                setImageFile(picked)
+                setImagePreview(URL.createObjectURL(picked))
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              disabled={streaming}
+              className="rounded-lg border border-pink-200 bg-pink-50/60 px-2.5 py-1 text-xs text-gray-600 transition hover:border-pink-400 disabled:opacity-50"
+            >
+              📷 发张照片
+            </button>
+
+            {pets.length === 0 && (
+              <span className="text-xs text-gray-400">
+                还没有宠物档案，可到「我的宠物」建档
+              </span>
+            )}
+          </div>
+
+          {imagePreview && (
+            <div className="mb-2 flex items-center gap-2">
+              <img
+                src={imagePreview}
+                alt="待发送照片"
+                className="h-12 w-12 rounded-lg object-cover ring-1 ring-pink-200"
+              />
+              <span className="text-xs text-gray-500">发送时会先识别这张照片</span>
+              <button
+                onClick={clearPhoto}
+                className="text-xs text-gray-400 transition hover:text-rose-500"
+              >
+                移除
+              </button>
+            </div>
+          )}
+
           {messages.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">
               {QUICK_QUESTIONS.slice(0, 2).map((q) => (
@@ -521,7 +617,7 @@ export default function Chat() {
             />
             <button
               onClick={() => sendMessage()}
-              disabled={streaming || !input.trim()}
+              disabled={streaming || (!input.trim() && !imageFile)}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-rose-400 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:from-pink-600 hover:to-rose-500 disabled:from-gray-300 disabled:to-gray-300"
             >
               发送

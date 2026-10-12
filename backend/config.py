@@ -51,6 +51,27 @@ class Settings(BaseSettings):
     # 保证容器首次启动即有可用的 RAG 知识库；留空则只索引 UPLOAD_DIR。
     KNOWLEDGE_SEED_DIR: str = ""
 
+    # ===== 视觉模型（宠物照片识别） =====
+    # VLM_API_KEY / VLM_BASE_URL 留空 → 复用上面的 LLM_*（同一网关一般一把钥匙通吃）。
+    # 想换成别家的视觉模型，只需在这里填独立凭据，代码不用动。
+    VLM_API_KEY: str = ""
+    VLM_BASE_URL: str = ""
+    VLM_MODEL: str = "glm-4v-flash"
+    VLM_FALLBACK_MODELS: str = "glm-4v"
+    VLM_TEMPERATURE: float = 0.3
+    VLM_TIMEOUT: int = 60
+
+    # 宠物照片存储目录（按 user_id 分子目录，不对外公开托管）
+    PET_IMAGE_DIR: str = "./data/pet_images"
+    MAX_IMAGE_BYTES: int = 5 * 1024 * 1024  # 单张图片上限 5 MB
+
+    # ===== 识别置信度分级（本项目核心：可信度一路传到推荐与审核） =====
+    # 低  < MIN_CONFIDENCE        → 拒识入库 + 转人工
+    # 中  [MIN_CONFIDENCE, HIGH)  → 只按物种推荐，不按品种
+    # 高  ≥ CONFIDENCE_HIGH       → 按品种+体型+毛发全量匹配
+    MIN_CONFIDENCE: float = 0.5
+    CONFIDENCE_HIGH: float = 0.75
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]

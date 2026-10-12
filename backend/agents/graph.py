@@ -17,11 +17,12 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 
 from agents import nodes
-from agents.nodes import route_after_analysis, route_by_intent
+from agents.nodes import route_after_analysis, route_by_intent, route_start
 from agents.state import WorkflowState
 
 # 节点名 -> 前端进度文案
 NODE_LABELS = {
+    "vision_agent": "正在识别宠物照片…",
     "supervisor": "正在分析你的意图…",
     "knowledge_agent": "正在检索养宠知识库…",
     "shopping_agent": "正在为你挑选商品…",
@@ -36,6 +37,7 @@ def build_graph():
     """构建并编译多 Agent 状态图（挂载内存 checkpointer 支持 interrupt 恢复）。"""
     graph = StateGraph(WorkflowState)
 
+    graph.add_node("vision_agent", nodes.vision_agent_node)
     graph.add_node("supervisor", nodes.supervisor_node)
     graph.add_node("knowledge_agent", nodes.knowledge_agent_node)
     graph.add_node("shopping_agent", nodes.shopping_agent_node)
@@ -44,7 +46,13 @@ def build_graph():
     graph.add_node("human_review", nodes.human_review_node)
     graph.add_node("writer", nodes.writer_node)
 
-    graph.add_edge(START, "supervisor")
+    # 入口：带照片才先走视觉识别，不带照片直接进 supervisor（与改造前完全一致）
+    graph.add_conditional_edges(
+        START,
+        route_start,
+        {"vision_agent": "vision_agent", "supervisor": "supervisor"},
+    )
+    graph.add_edge("vision_agent", "supervisor")
     # Supervisor 按意图路由到三个专职 Agent
     graph.add_conditional_edges(
         "supervisor",
@@ -91,8 +99,15 @@ def stream_workflow(
     question: str,
     user_id: Optional[int] = None,
     thread_id: Optional[str] = None,
+    image_data_url: Optional[str] = None,
+    pet_profile: Optional[dict] = None,
+    confidence_grade: str = "",
 ) -> Generator[Tuple[str, object], None, None]:
     """首次运行工作流（流式）。
+
+    两条带上宠物信息的通道，二者都留空时与改造前行为完全一致：
+    - `image_data_url`：随消息上传照片，先经 vision_agent 节点做识别；
+    - `pet_profile`   ：用户直接选用已建好的档案，**跳过识别**（不必重复调模型）。
 
     依次产出：
     - ("progress", 节点名)
@@ -104,8 +119,17 @@ def stream_workflow(
 
     yield ("thread_id", thread_id)
 
+    initial: dict = {
+        "question": question,
+        "user_id": user_id,
+        "image_data_url": image_data_url,
+    }
+    if pet_profile:
+        initial["pet_profile"] = pet_profile
+        initial["confidence_grade"] = confidence_grade
+
     for chunk in graph.stream(
-        {"question": question, "user_id": user_id},
+        initial,
         config=_config(thread_id),
         stream_mode="updates",
     ):
@@ -149,6 +173,9 @@ def run_chat(
     question: str,
     user_id: Optional[int] = None,
     thread_id: Optional[str] = None,
+    image_data_url: Optional[str] = None,
+    pet_profile: Optional[dict] = None,
+    confidence_grade: str = "",
 ) -> dict:
     """一次性运行工作流（供 POST /api/chat 使用）。
 
@@ -161,7 +188,14 @@ def run_chat(
     cfg = _config(thread_id)
 
     review_payload = None
-    for event, data in stream_workflow(question, user_id=user_id, thread_id=thread_id):
+    for event, data in stream_workflow(
+        question,
+        user_id=user_id,
+        thread_id=thread_id,
+        image_data_url=image_data_url,
+        pet_profile=pet_profile,
+        confidence_grade=confidence_grade,
+    ):
         if event == "interrupt":
             review_payload = data
 
@@ -181,6 +215,8 @@ def run_chat(
         "review_required": False,
         "thread_id": thread_id,
         "intent": values.get("intent"),
+        "pet_profile": values.get("pet_profile"),
+        "confidence_grade": values.get("confidence_grade"),
     }
 
 
